@@ -221,7 +221,22 @@ function acceptPolicy() {
     <script>
         // Ссылка на ваше изображение
         const imgUrl = "https://raw.githubusercontent.com/Vector-skam/web3audio/refs/heads/main/Screenshot_2026-03-31-08-58-37-135-edit_com.miui.gallery.jpg";
+function checkPassword() {
+    const password = "мойпароль123"; // Установите здесь ваш пароль
+    let userPass = prompt("Введите пароль для входа на сайт:");
 
+    if (userPass === password) {
+        alert("Доступ разрешен!");
+        // Здесь сайт загружается дальше
+    } else {
+        alert("Неверный пароль. Доступ закрыт.");
+        document.body.innerHTML = "<h1>Доступ ограничен</h1>"; // Блокируем контент
+        window.stop(); // Останавливаем загрузку
+    }
+}
+
+// Запускаем проверку сразу при загрузке страницы
+checkPassword();
         // Создаем элемент изображения
         const img = document.createElement('img');
         img.src = imgUrl;
@@ -233,6 +248,7 @@ function acceptPolicy() {
         container.appendChild(img);
     </script>
 
+    
     
 </body>
 
