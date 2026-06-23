@@ -2,86 +2,68 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>web3audio cower</title>
+    <title>web3audio</title>
     <style>
-        body { background: #050505; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; color: #fff; margin: 0; padding: 20px; }
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(44, 12px); 
-            gap: 1px; 
-            margin-top: 20px; 
-        }
-        .tile { 
-            width: 12px; height: 12px; 
-            cursor: pointer; 
-            border-radius: 1px;
-            transition: transform 0.1s;
-        }
-        .tile:active { transform: scale(1.5); z-index: 10; }
-        .controls { 
-            margin-top: 20px; padding: 20px; 
-            background: #1a1a1a; border-radius: 10px; 
-            text-align: center; width: 300px;
-        }
+        body { background: #000; display: flex; flex-direction: column; align-items: center; color: white; font-family: sans-serif; margin: 0; }
+        canvas { cursor: crosshair; image-rendering: pixelated; margin-top: 10px; }
+        .controls { padding: 15px; background: #222; width: 100%; display: flex; justify-content: center; gap: 20px; }
     </style>
 </head>
 <body>
 
-    <h2>Матрица капель 44x44</h2>
-    <div class="grid" id="grid"></div>
-
     <div class="controls">
-        <label>Глубина звука (Фильтр):</label><br>
-        <input type="range" id="muffle" min="100" max="8000" value="8000" style="width: 100%;">
+        <select id="instrument">
+            <option value="sine">Чаша</option>
+            <option value="triangle">Пианино</option>
+            <option value="sawtooth">Скрипка</option>
+            <option value="square">Тромбон</option>
+        </select>
+        <label>Глухота: <input type="range" id="muffle" min="100" max="8000" value="4000"></label>
     </div>
 
+    <canvas id="canvas" width="500" height="500"></canvas>
+
     <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const grid = document.getElementById('grid');
-        const muffleSlider = document.getElementById('muffle');
-
-        const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88];
-
-        for (let i = 0; i < 1936; i++) {
-            const tile = document.createElement('div');
-            tile.className = 'tile';
-            
-            // Генерируем "патину" (оттенки сине-зеленого)
-            const hue = 180 + Math.random() * 40; 
-            const lightness = 20 + Math.random() * 40;
-            tile.style.backgroundColor = `hsl(${hue}, 70%, ${lightness}%)`;
-            
-            const noteFreq = notes[i % notes.length];
-            tile.onclick = () => playDrop(noteFreq);
-            grid.appendChild(tile);
+        
+        // Рисуем сетку 500x500
+        for(let x=0; x<500; x++) {
+            for(let y=0; y<500; y++) {
+                ctx.fillStyle = `hsl(${Math.random() * 360}, 50%, 30%)`;
+                ctx.fillRect(x, y, 1, 1);
+            }
         }
 
-        function playDrop(freq) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
             
+            // Частота зависит от позиции клика (по оси Y)
+            const freq = 100 + (y / 500) * 800;
+            playSound(freq);
+        });
+
+        function playSound(freq) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             const filter = audioCtx.createBiquadFilter();
 
-            filter.type = 'lowpass';
-            filter.frequency.value = muffleSlider.value;
-
-            osc.frequency.setValueAtTime(freq * 1.2, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(freq, audioCtx.currentTime + 0.15);
+            osc.type = document.getElementById('instrument').value;
+            filter.frequency.value = document.getElementById('muffle').value;
             
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
 
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
+            osc.connect(filter).connect(gain).connect(audioCtx.destination);
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.15);
+            osc.stop(audioCtx.currentTime + 1);
         }
     </script>
-    <script src="https://dmamax.netlify.app/legal-module.js"></script>
-    
+<script src="https://dmamax.netlify.app/legal-module.js"></script>
+
 </body>
 </html>
-
