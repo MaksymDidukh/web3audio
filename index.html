@@ -4,49 +4,61 @@
     <meta charset="UTF-8">
     <title>web3audio</title>
     <style>
-        body { background: #000; display: flex; flex-direction: column; align-items: center; color: white; font-family: sans-serif; margin: 0; }
-        canvas { cursor: crosshair; image-rendering: pixelated; margin-top: 10px; }
-        .controls { padding: 15px; background: #222; width: 100%; display: flex; justify-content: center; gap: 20px; }
+        body { background: #080808; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .panel { background: #1a1a1a; padding: 20px; border-radius: 15px; display: flex; flex-direction: column; gap: 15px; align-items: center; width: 400px; }
+        .controls { display: flex; gap: 10px; width: 100%; justify-content: center; }
+        canvas { border: 2px solid #333; cursor: crosshair; margin-top: 10px; image-rendering: pixelated; }
+        label { font-size: 14px; }
     </style>
 </head>
 <body>
 
-    <div class="controls">
+    <div class="panel">
+        <div class="controls">
+            <label>Размер: <input type="range" id="sizeSlider" min="12" max="2000" value="128"></label>
+            <span id="sizeVal">128</span>x128
+        </div>
+        <div class="controls">
+            <label>Глухота: <input type="range" id="muffle" min="100" max="8000" value="4000"></label>
+        </div>
         <select id="instrument">
             <option value="sine">Чаша</option>
             <option value="triangle">Пианино</option>
             <option value="sawtooth">Скрипка</option>
             <option value="square">Тромбон</option>
         </select>
-        <label>Глухота: <input type="range" id="muffle" min="100" max="8000" value="4000"></label>
+        <button onclick="initGrid()">Применить настройки</button>
     </div>
 
-    <canvas id="canvas" width="500" height="500"></canvas>
+    <canvas id="musicCanvas" width="600" height="600"></canvas>
 
     <script>
-        const canvas = document.getElementById('canvas');
+        const canvas = document.getElementById('musicCanvas');
         const ctx = canvas.getContext('2d');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Рисуем сетку 500x500
-        for(let x=0; x<500; x++) {
-            for(let y=0; y<500; y++) {
-                ctx.fillStyle = `hsl(${Math.random() * 360}, 50%, 30%)`;
-                ctx.fillRect(x, y, 1, 1);
+        let size = 128;
+
+        document.getElementById('sizeSlider').oninput = (e) => {
+            document.getElementById('sizeVal').textContent = e.target.value;
+        };
+
+        function initGrid() {
+            size = parseInt(document.getElementById('sizeSlider').value);
+            ctx.clearRect(0, 0, 600, 600);
+            const cellSize = 600 / size;
+            for(let i = 0; i < size * size; i++) {
+                const x = (i % size) * cellSize;
+                const y = Math.floor(i / size) * cellSize;
+                ctx.fillStyle = `hsl(${(i / (size * size)) * 360}, 50%, 40%)`;
+                ctx.fillRect(x, y, cellSize, cellSize);
             }
         }
 
-        canvas.addEventListener('mousedown', (e) => {
+        canvas.addEventListener('click', (e) => {
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const y = (e.clientY - rect.top) / (600 / size);
+            const freq = 100 + (1 - (y / size)) * 800;
             
-            // Частота зависит от позиции клика (по оси Y)
-            const freq = 100 + (y / 500) * 800;
-            playSound(freq);
-        });
-
-        function playSound(freq) {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             const filter = audioCtx.createBiquadFilter();
@@ -55,15 +67,17 @@
             filter.frequency.value = document.getElementById('muffle').value;
             
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
 
             osc.connect(filter).connect(gain).connect(audioCtx.destination);
             osc.start();
-            osc.stop(audioCtx.currentTime + 1);
-        }
-    </script>
-<script src="https://dmamax.netlify.app/legal-module.js"></script>
+            osc.stop(audioCtx.currentTime + 0.5);
+        });
 
+        initGrid();
+    </script>
+    <script src="https://dmamax.netlify.app/legal-module.js"></script>
+    
 </body>
 </html>
