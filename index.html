@@ -8,15 +8,15 @@
         .panel { background: #1a1a1a; padding: 20px; border-radius: 15px; display: flex; flex-direction: column; gap: 15px; align-items: center; width: 400px; }
         .controls { display: flex; gap: 10px; width: 100%; justify-content: center; }
         canvas { border: 2px solid #333; cursor: crosshair; margin-top: 10px; image-rendering: pixelated; }
-        label { font-size: 14px; }
+        button { cursor: pointer; padding: 5px 10px; }
     </style>
 </head>
 <body>
 
     <div class="panel">
         <div class="controls">
-            <label>Размер: <input type="range" id="sizeSlider" min="12" max="690" value="45"></label>
-            <span id="sizeVal">128</span>x128
+            <label>Размер: <input type="range" id="sizeSlider" min="12" max="500" value="28"></label>
+            <span id="sizeVal">28</span>x28
         </div>
         <div class="controls">
             <label>Глухота: <input type="range" id="muffle" min="100" max="8000" value="4000"></label>
@@ -28,6 +28,10 @@
             <option value="square">Тромбон</option>
         </select>
         <button onclick="initGrid()">Применить настройки</button>
+        <div class="controls">
+            <button id="recBtn">Начать запись</button>
+            <button id="stopBtn" disabled>Стоп и скачать</button>
+        </div>
     </div>
 
     <canvas id="musicCanvas" width="600" height="600"></canvas>
@@ -36,8 +40,37 @@
         const canvas = document.getElementById('musicCanvas');
         const ctx = canvas.getContext('2d');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let size = 128;
+        
+        // --- Логика записи ---
+        const dest = audioCtx.createMediaStreamDestination();
+        const recorder = new MediaRecorder(dest.stream);
+        let chunks = [];
 
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'my-music.webm';
+            a.click();
+        };
+
+        document.getElementById('recBtn').onclick = () => {
+            chunks = [];
+            recorder.start();
+            document.getElementById('recBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+        };
+
+        document.getElementById('stopBtn').onclick = () => {
+            recorder.stop();
+            document.getElementById('recBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        };
+
+        // --- Логика игры ---
+        let size = 128;
         document.getElementById('sizeSlider').oninput = (e) => {
             document.getElementById('sizeVal').textContent = e.target.value;
         };
@@ -70,14 +103,18 @@
             gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
 
-            osc.connect(filter).connect(gain).connect(audioCtx.destination);
+            // Подключаем звук к колонкам И к регистратору
+            osc.connect(filter).connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.connect(dest); 
+
             osc.start();
             osc.stop(audioCtx.currentTime + 0.5);
         });
 
         initGrid();
     </script>
-    <script src="https://dmamax.netlify.app/legal-module.js"></script>
-    
+<script src="https://dmamax.netlify.app/legal-module.js"></script>
+
 </body>
 </html>
